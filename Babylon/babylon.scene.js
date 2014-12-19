@@ -10,8 +10,10 @@
             this.forceWireframe = false;
             this.forcePointsCloud = false;
             this.forceShowBoundingBoxes = false;
+            this.animationsEnabled = true;
             this.cameraToUseForPointers = null;
             // Fog
+            this.fogEnabled = true;
             this.fogMode = Scene.FOGMODE_NONE;
             this.fogColor = new BABYLON.Color3(0.2, 0.2, 0.3);
             this.fogDensity = 0.1;
@@ -62,8 +64,7 @@
             // Procedural textures
             this.proceduralTexturesEnabled = true;
             this._proceduralTextures = new Array();
-            // Sound Tracks
-            this._soundTracks = new Array();
+            this.soundTracks = new Array();
             this._totalVertices = 0;
             this._activeVertices = 0;
             this._activeParticles = 0;
@@ -107,6 +108,7 @@
             this.attachControl();
 
             this._debugLayer = new BABYLON.DebugLayer(this);
+            this.mainSoundTrack = new BABYLON.SoundTrack(this, { mainTrack: true });
         }
         Object.defineProperty(Scene.prototype, "debugLayer", {
             // Properties
@@ -473,6 +475,10 @@
         };
 
         Scene.prototype._animate = function () {
+            if (!this.animationsEnabled) {
+                return;
+            }
+
             if (!this._animationStartDate) {
                 this._animationStartDate = BABYLON.Tools.Now;
             }
@@ -721,7 +727,7 @@
                     }
 
                     // Dispatch
-                    this._activeVertices += subMesh.verticesCount;
+                    this._activeVertices += subMesh.indexCount;
                     this._renderingManager.dispatch(subMesh);
                 }
             }
@@ -1181,6 +1187,20 @@
                 var cameraDirection = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, -1), mat);
                 cameraDirection.normalize();
                 audioEngine.audioContext.listener.setOrientation(cameraDirection.x, cameraDirection.y, cameraDirection.z, 0, 1, 0);
+                for (var i = 0; i < this.mainSoundTrack.soundCollection.length; i++) {
+                    var sound = this.mainSoundTrack.soundCollection[i];
+                    if (sound.useBabylonJSAttenuation) {
+                        sound.updateDistanceFromListener();
+                    }
+                }
+                for (var i = 0; i < this.soundTracks.length; i++) {
+                    for (var j = 0; i < this.soundTracks[i].soundCollection.length; j++) {
+                        var sound = this.soundTracks[i].soundCollection[j];
+                        if (sound.useBabylonJSAttenuation) {
+                            sound.updateDistanceFromListener();
+                        }
+                    }
+                }
             }
         };
 

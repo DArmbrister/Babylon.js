@@ -138,7 +138,7 @@ declare module BABYLON {
         private _resetVertexBufferBinding();
         public createVertexBuffer(vertices: number[]): WebGLBuffer;
         public createDynamicVertexBuffer(capacity: number): WebGLBuffer;
-        public updateDynamicVertexBuffer(vertexBuffer: WebGLBuffer, vertices: any, length?: number): void;
+        public updateDynamicVertexBuffer(vertexBuffer: WebGLBuffer, vertices: any, offset?: number): void;
         private _resetIndexBufferBinding();
         public createIndexBuffer(indices: number[]): WebGLBuffer;
         public bindBuffers(vertexBuffer: WebGLBuffer, indexBuffer: WebGLBuffer, vertexDeclaration: number[], vertexStrideSize: number, effect: Effect): void;
@@ -342,6 +342,7 @@ declare module BABYLON {
         public forcePointsCloud: boolean;
         public forceShowBoundingBoxes: boolean;
         public clipPlane: Plane;
+        public animationsEnabled: boolean;
         private _onPointerMove;
         private _onPointerDown;
         public onPointerDown: (evt: PointerEvent, pickInfo: PickingInfo) => void;
@@ -351,6 +352,7 @@ declare module BABYLON {
         private _meshUnderPointer;
         private _onKeyDown;
         private _onKeyUp;
+        public fogEnabled: boolean;
         public fogMode: number;
         public fogColor: Color3;
         public fogDensity: number;
@@ -392,7 +394,8 @@ declare module BABYLON {
         private _meshesForIntersections;
         public proceduralTexturesEnabled: boolean;
         public _proceduralTextures: ProceduralTexture[];
-        public _soundTracks: SoundTrack[];
+        public mainSoundTrack: SoundTrack;
+        public soundTracks: SoundTrack[];
         private _engine;
         private _totalVertices;
         public _activeVertices: number;
@@ -885,10 +888,11 @@ declare module BABYLON {
         public maxDistance: number;
         public autoplay: boolean;
         public loop: boolean;
+        public useBabylonJSAttenuation: boolean;
+        public soundTrackId: number;
         private _position;
         private _localDirection;
         private _volume;
-        private _currentVolume;
         private _isLoaded;
         private _isReadyToPlay;
         private _isPlaying;
@@ -924,6 +928,7 @@ declare module BABYLON {
         public setPosition(newPosition: Vector3): void;
         public setLocalDirectionToMesh(newLocalDirection: Vector3): void;
         private _updateDirection();
+        public updateDistanceFromListener(): void;
         /**
         * Play the sound
         * @param time (optional) Start the sound after X seconds. Start immediately (0) by default.
@@ -935,6 +940,8 @@ declare module BABYLON {
         */
         public stop(time?: number): void;
         public pause(): void;
+        public setVolume(newVolume: number): void;
+        public getVolume(): number;
         public attachToMesh(meshToConnectTo: AbstractMesh): void;
         private _onRegisterAfterWorldMatrixUpdate(connectedMesh);
         private _soundLoaded(audioData);
@@ -946,10 +953,11 @@ declare module BABYLON {
         private _trackGain;
         private _trackConvolver;
         private _scene;
-        private _id;
-        private _soundCollection;
+        public id: number;
+        public soundCollection: Sound[];
+        private _isMainTrack;
         constructor(scene: Scene, options?: any);
-        public AddSound(newSound: Sound): void;
+        public AddSound(sound: Sound): void;
         public RemoveSound(sound: Sound): void;
         public setVolume(newVolume: number): void;
     }
@@ -1516,10 +1524,12 @@ declare module BABYLON {
         private _ratio;
         private _identityMatrix;
         private _showUI;
+        private _needToRefreshMeshesTree;
         public shouldDisplayLabel: (node: Node) => boolean;
         public shouldDisplayAxis: (mesh: Mesh) => boolean;
         public axisRatio: number;
         constructor(scene: Scene);
+        private _refreshMeshesTreeContent();
         private _renderSingleAxis(zero, unit, unitText, label, color);
         private _renderAxis(projectedPosition, mesh, globalViewport);
         private _renderLabel(text, projectedPosition, labelOffset, onClick, getFillStyle);
@@ -1932,6 +1942,7 @@ declare module BABYLON {
         static EmissiveTextureEnabled: boolean;
         static SpecularTextureEnabled: boolean;
         static BumpTextureEnabled: boolean;
+        static FresnelEnabled: boolean;
     }
 }
 declare module BABYLON {
@@ -2006,50 +2017,6 @@ declare module BABYLON {
         private _savedViewMatrix;
         constructor(name: string, size: number, scene: Scene, generateMipMaps?: boolean);
         public clone(): MirrorTexture;
-    }
-}
-declare module BABYLON {
-    class ProceduralTexture extends Texture {
-        private _size;
-        public _generateMipMaps: boolean;
-        private _doNotChangeAspectRatio;
-        private _currentRefreshId;
-        private _refreshRate;
-        private _vertexBuffer;
-        private _indexBuffer;
-        private _effect;
-        private _vertexDeclaration;
-        private _vertexStrideSize;
-        private _uniforms;
-        private _samplers;
-        private _fragment;
-        private _textures;
-        private _floats;
-        private _floatsArrays;
-        private _colors3;
-        private _colors4;
-        private _vectors2;
-        private _vectors3;
-        private _matrices;
-        constructor(name: string, size: any, fragment: any, scene: Scene, generateMipMaps?: boolean);
-        public isReady(): boolean;
-        public resetRefreshCounter(): void;
-        public refreshRate : number;
-        public _shouldRender(): boolean;
-        public getRenderSize(): number;
-        public resize(size: any, generateMipMaps: any): void;
-        private _checkUniform(uniformName);
-        public setTexture(name: string, texture: Texture): ProceduralTexture;
-        public setFloat(name: string, value: number): ProceduralTexture;
-        public setFloats(name: string, value: number[]): ProceduralTexture;
-        public setColor3(name: string, value: Color3): ProceduralTexture;
-        public setColor4(name: string, value: Color4): ProceduralTexture;
-        public setVector2(name: string, value: Vector2): ProceduralTexture;
-        public setVector3(name: string, value: Vector3): ProceduralTexture;
-        public setMatrix(name: string, value: Matrix): ProceduralTexture;
-        public render(useCameraPostProcess?: boolean): void;
-        public clone(): ProceduralTexture;
-        public dispose(): void;
     }
 }
 declare module BABYLON {
@@ -2776,7 +2743,7 @@ declare module BABYLON {
         public getPhysicsFriction(): number;
         public getPhysicsRestitution(): number;
         public getPositionInCameraSpace(camera?: Camera): Vector3;
-        public getDistanceToCamera(camera?: Camera): Vector3;
+        public getDistanceToCamera(camera?: Camera): number;
         public applyImpulse(force: Vector3, contactPoint: Vector3): void;
         public setPhysicsLinkWith(otherMesh: Mesh, pivot1: Vector3, pivot2: Vector3, options?: any): void;
         public updatePhysicsBodyPosition(): void;
@@ -2841,7 +2808,7 @@ declare module BABYLON {
         public isReady(): boolean;
         public setAllVerticesData(vertexData: VertexData, updatable?: boolean): void;
         public setVerticesData(kind: string, data: number[], updatable?: boolean, stride?: number): void;
-        public updateVerticesDataDirectly(kind: string, data: Float32Array): void;
+        public updateVerticesDataDirectly(kind: string, data: Float32Array, offset: number): void;
         public updateVerticesData(kind: string, data: number[], updateExtends?: boolean): void;
         public getTotalVertices(): number;
         public getVerticesData(kind: string): number[];
@@ -2849,7 +2816,7 @@ declare module BABYLON {
         public getVertexBuffers(): VertexBuffer[];
         public isVerticesDataPresent(kind: string): boolean;
         public getVerticesDataKinds(): string[];
-        public setIndices(indices: number[]): void;
+        public setIndices(indices: number[], totalVertices?: number): void;
         public getTotalIndices(): number;
         public getIndices(): number[];
         public getIndexBuffer(): any;
@@ -3059,9 +3026,9 @@ declare module BABYLON {
         public subdivide(count: number): void;
         public setVerticesData(kind: any, data: any, updatable?: boolean, stride?: number): void;
         public updateVerticesData(kind: string, data: number[], updateExtends?: boolean, makeItUnique?: boolean): void;
-        public updateVerticesDataDirectly(kind: string, data: Float32Array, makeItUnique?: boolean): void;
+        public updateVerticesDataDirectly(kind: string, data: Float32Array, offset?: number, makeItUnique?: boolean): void;
         public makeGeometryUnique(): void;
-        public setIndices(indices: number[]): void;
+        public setIndices(indices: number[], totalVertices?: number): void;
         public _bind(subMesh: SubMesh, effect: Effect, fillMode: number): void;
         public _draw(subMesh: SubMesh, fillMode: number, instancesCount?: number): void;
         public registerBeforeRender(func: () => void): void;
@@ -3220,7 +3187,7 @@ declare module BABYLON {
         public getStrideSize(): number;
         public create(data?: number[]): void;
         public update(data: number[]): void;
-        public updateDirectly(data: Float32Array): void;
+        public updateDirectly(data: Float32Array, offset: number): void;
         public dispose(): void;
         private static _PositionKind;
         private static _NormalKind;

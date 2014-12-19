@@ -26,6 +26,7 @@
         public forcePointsCloud = false;
         public forceShowBoundingBoxes = false;
         public clipPlane: Plane;
+        public animationsEnabled = true;
 
         // Pointers
         private _onPointerMove: (evt: PointerEvent) => void;
@@ -41,6 +42,7 @@
         private _onKeyUp: (evt: Event) => void;
 
         // Fog
+        public fogEnabled = true;
         public fogMode = Scene.FOGMODE_NONE;
         public fogColor = new Color3(0.2, 0.2, 0.3);
         public fogDensity = 0.1;
@@ -121,7 +123,8 @@
         public _proceduralTextures = new Array<ProceduralTexture>();
 
         // Sound Tracks
-        public _soundTracks = new Array<SoundTrack>();
+        public mainSoundTrack: SoundTrack;
+        public soundTracks = new Array<SoundTrack>();
 
         // Private
         private _engine: Engine;
@@ -198,6 +201,7 @@
             this.attachControl();
 
             this._debugLayer = new DebugLayer(this);
+            this.mainSoundTrack = new SoundTrack(this, { mainTrack: true });
         }
 
         // Properties 
@@ -550,6 +554,10 @@
         }
 
         private _animate(): void {
+            if (!this.animationsEnabled) {
+                return;
+            }
+
             if (!this._animationStartDate) {
                 this._animationStartDate = Tools.Now;
             }
@@ -797,7 +805,7 @@
                     }
 
                     // Dispatch
-                    this._activeVertices += subMesh.verticesCount;
+                    this._activeVertices += subMesh.indexCount;
                     this._renderingManager.dispatch(subMesh);
                 }
             }
@@ -1246,7 +1254,7 @@
         }
 
         private _updateAudioParameters() {
-            var listeningCamera;
+            var listeningCamera: Camera;
             var audioEngine = this._engine.getAudioEngine();
 
             if (this.activeCameras.length > 0) {
@@ -1261,8 +1269,21 @@
                 var cameraDirection = Vector3.TransformNormal(new Vector3(0, 0, -1), mat);
                 cameraDirection.normalize();
                 audioEngine.audioContext.listener.setOrientation(cameraDirection.x, cameraDirection.y, cameraDirection.z, 0, 1, 0);
+                for (var i = 0; i < this.mainSoundTrack.soundCollection.length; i++) {
+                    var sound = this.mainSoundTrack.soundCollection[i];
+                    if (sound.useBabylonJSAttenuation) {
+                        sound.updateDistanceFromListener();
+                    }
+                }
+                for (var i = 0; i < this.soundTracks.length; i++) {
+                    for (var j = 0; i < this.soundTracks[i].soundCollection.length; j++) {
+                        var sound = this.soundTracks[i].soundCollection[j];
+                        if (sound.useBabylonJSAttenuation) {
+                            sound.updateDistanceFromListener();
+                        }
+                    }
+                }
             }
-
         }
 
         public dispose(): void {
